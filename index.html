@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>渠道发货限制量 - 演示原型</title>
+  <style>
+    :root { --primary: #1677ff; --danger: #ff4d4f; --success: #52c41a; --warning: #faad14; --border: #e8e8e8; --text: #333; --text2: #666; --bg: #f5f7fa; --sidebar: #001529; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: var(--sidebar); color: #fff; flex-shrink: 0; }
+    .sidebar-h { padding: 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #002140; }
+    .sidebar-sub { font-size: 11px; opacity: .65; margin-top: 4px; }
+    .nav-group { padding: 8px 0; }
+    .nav-title { padding: 8px 16px; font-size: 12px; color: rgba(255,255,255,.45); }
+    .nav-item { padding: 10px 16px 10px 24px; font-size: 13px; cursor: pointer; border-left: 3px solid transparent; }
+    .nav-item:hover { background: #112a45; }
+    .nav-item.active { background: var(--primary); border-left-color: #69b1ff; }
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+    .topbar h1 { font-size: 16px; font-weight: 600; }
+    .tag { background: #e6f4ff; color: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    .content { padding: 16px 20px; flex: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .filter-bar { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filter-bar select, .filter-bar input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+    .header-bar { background: var(--sidebar); color: #fff; padding: 0 20px; height: 48px; display: flex; align-items: center; justify-content: space-between; }
+    .header-bar .sys { font-size: 15px; font-weight: 600; }
+    .header-bar .user { font-size: 12px; opacity: .75; }
+    .action-bar { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .action-bar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+    .action-bar .hint { font-size: 12px; color: var(--text2); margin-left: 4px; }
+    .btn { padding: 6px 14px; border-radius: 4px; border: none; cursor: pointer; font-size: 13px; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-outline { background: #fff; border: 1px solid var(--border); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .table-wrap { background: #fff; border: 1px solid var(--border); border-radius: 6px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+    th, td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; white-space: nowrap; }
+    th { background: #fafafa; font-weight: 600; }
+    .col-check { width: 36px; text-align: center; }
+    tr.row-selected { background: #e6f4ff; }
+    .pager { padding: 10px 12px; font-size: 12px; color: var(--text2); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    tr:last-child td { border-bottom: none; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    .s-pending { background: #fff7e6; color: #d46b08; }
+    .s-active { background: #f6ffed; color: #389e0d; }
+    .s-reject { background: #fff1f0; color: #cf1322; }
+    .s-stop { background: #f5f5f5; color: #999; }
+    .s-pass { background: #f6ffed; color: #389e0d; }
+    .pct-high { color: var(--danger); font-weight: 600; }
+    .pct-mid { color: var(--warning); }
+    .link { color: var(--primary); cursor: pointer; margin-right: 6px; }
+    .link:hover { text-decoration: underline; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; border-radius: 8px; width: 100%; max-width: 720px; max-height: 90vh; overflow: auto; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+    .modal-lg { max-width: 1080px; }
+    .modal-h { padding: 14px 20px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .modal-b { padding: 20px; }
+    .modal-f { padding: 12px 20px; border-top: 1px solid var(--border); text-align: right; display: flex; gap: 8px; justify-content: flex-end; }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; font-size: 13px; margin-bottom: 4px; }
+    .form-row label .req { color: var(--danger); }
+    .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+    .form-row select[multiple] { height: 72px; }
+    .form-row .hint { font-size: 12px; color: var(--text2); margin-top: 4px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .detail-grid { display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px; font-size: 13px; margin-bottom: 12px; }
+    .detail-grid .lbl { color: var(--text2); }
+    .diff-add { background: #f6ffed; }
+    .diff-chg { background: #fff7e6; }
+    .diff-new { color: var(--danger); font-weight: 600; }
+    .confirm-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 10px 14px; border-radius: 4px; font-size: 13px; margin-bottom: 12px; }
+    .page-path { font-size: 12px; color: var(--text2); }
+    .toast { position: fixed; top: 20px; right: 20px; background: #fff; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,.12); padding: 10px 16px; border-radius: 6px; z-index: 300; font-size: 13px; display: none; }
+    .toast.show { display: block; animation: fadeIn .2s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+    .section-title { font-size: 13px; font-weight: 600; margin: 16px 0 8px; color: var(--text); }
+    .tabs { display: flex; gap: 0; background: #fff; border: 1px solid var(--border); border-radius: 6px 6px 0 0; margin-bottom: 0; overflow: hidden; }
+    .tabs .tab { padding: 10px 20px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text2); background: #fafafa; }
+    .tabs .tab:hover { color: var(--primary); }
+    .tabs .tab.active { color: var(--primary); background: #fff; border-bottom-color: var(--primary); font-weight: 600; }
+    .tab-panel-wrap { background: transparent; }
+    @media (max-width: 900px) { .sidebar { width: 180px; } .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-h">物流系统<div class="sidebar-sub">渠道管理</div></div>
+    <div class="nav-group">
+      <div class="nav-title">渠道管理</div>
+      <!-- 权限：【新增菜单列表】渠道发货限制配置 -->
+      <div class="nav-item active">渠道发货限制配置</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="header-bar">
+      <span class="sys">物流系统</span>
+      <span class="user">洛瑶 · 演示原型 v2.8 · 1 菜单 3 页签</span>
+    </div>
+    <div class="topbar">
+      <h1 id="pageTitle">渠道发货限制配置</h1>
+      <span class="tag">对齐需求 v2.8</span>
+      <span class="page-path" id="pagePath">物流 → 渠道管理 → 渠道发货限制配置 → 配置</span>
+    </div>
+    <div class="content">
+      <div class="tabs" id="mainTabs">
+        <div class="tab active" data-page="config">配置</div>
+        <div class="tab" data-page="approve">审批</div>
+        <div class="tab" data-page="monitor">占用统计</div>
+      </div>
+      <div class="tab-panel-wrap">
+      <!-- 7.1 配置列表 -->
+      <div id="page-config" class="page active">
+        <div class="filter-bar">
+          <select><option>尾程渠道：全部</option><option>新渠道-经济线</option><option>英国卡派专线</option></select>
+          <select multiple title="平台多选"><option>平台：全部</option><option>亚马逊</option><option>eBay</option></select>
+          <select multiple title="国家多选"><option>国家：全部</option></select>
+          <select multiple title="销售组多选"><option>销售组：全部</option></select>
+          <select multiple title="仓库多选"><option>仓库：全部</option></select>
+          <select multiple title="账号多选"><option>账号：全部</option></select>
+          <select><option>配置状态：全部</option><option>待审批</option><option>已生效</option><option>已驳回</option><option>已停用</option></select>
+          <input type="date" title="更新时间起" /> — <input type="date" title="更新时间止" />
+          <button class="btn btn-primary btn-sm">查询</button>
+          <button class="btn btn-outline btn-sm">重置</button>
+        </div>
+        <div class="action-bar" id="configActionBar">
+          <button class="btn btn-primary" id="btnNew">+ 新建配置</button>
+          <span class="sep"></span>
+          <button class="btn btn-outline" id="btnEdit">编辑</button>
+          <button class="btn btn-outline" id="btnWithdraw">撤回</button>
+          <button class="btn btn-outline" id="btnStop">申请停用</button>
+          <span class="sep"></span>
+          <button class="btn btn-outline">导出</button>
+          <span class="hint" id="configActionHint">公共按钮始终可点 · 编辑单选 / 撤回·停用可多选 · 点击后稽核</span>
+        </div>
+        <div class="table-wrap">
+          <table id="configTable">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="configCheckAll" title="全选" /></th>
+                <th>配置编号</th><th>尾程渠道</th><th>平台</th><th>国家</th><th>销售组</th><th>仓库</th><th>账号</th>
+                <th>日上限数量</th><th>配置状态</th><th>更新人</th><th>更新时间</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="configTbody"></tbody>
+          </table>
+          <div class="pager"><span id="configCount">共 0 条</span><span>1 / 1 页</span></div>
+        </div>
+      </div>
+
+      <!-- 7.7 审批列表 -->
+      <div id="page-approve" class="page">
+        <div class="filter-bar">
+          <input type="text" placeholder="审批单号" style="width:140px" />
+          <select><option>审批类型：全部</option><option>新增</option><option>修改</option><option>停用</option></select>
+          <input type="text" placeholder="配置编号" style="width:120px" />
+          <select><option>尾程渠道：全部</option></select>
+          <select><option>审批状态：待审批</option><option>已通过</option><option>已驳回</option><option>已撤回</option></select>
+          <input type="text" placeholder="提交人" style="width:100px" />
+          <input type="date" value="2026-06-08" /> — <input type="date" value="2026-06-15" />
+          <button class="btn btn-primary btn-sm">查询</button>
+          <button class="btn btn-outline btn-sm">重置</button>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-primary" id="btnApprove">审批</button>
+          <span class="hint" id="approveActionHint">公共按钮始终可点 · 审批须单选 1 条待审批 · 撤回见配置页签</span>
+        </div>
+        <div class="table-wrap">
+          <table id="approveTable">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="approveCheckAll" /></th>
+                <th>审批单号</th><th>审批类型</th><th>配置编号</th><th>尾程渠道</th>
+                <th>平台</th><th>国家</th><th>销售组</th><th>仓库</th><th>账号</th>
+                <th>提交人</th><th>提交时间</th><th>审批状态</th><th>审批人</th><th>审批时间</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="approveTbody"></tbody>
+          </table>
+          <div class="pager"><span id="approveCount">共 0 条</span><span>1 / 1 页</span></div>
+        </div>
+      </div>
+
+      <!-- 7.9 占用统计 -->
+      <div id="page-monitor" class="page">
+        <div class="filter-bar">
+          <input type="date" value="2026-06-12" title="统计日期" />
+          <select><option>尾程渠道：全部</option></select>
+          <select><option>平台：全部</option></select>
+          <select><option>国家：全部</option></select>
+          <select><option>销售组：全部</option></select>
+          <select><option>仓库：全部</option></select>
+          <select><option>账号：全部</option></select>
+          <select><option>是否触顶：全部</option><option>是</option><option>否</option></select>
+          <button class="btn btn-primary btn-sm">查询</button>
+          <button class="btn btn-outline btn-sm">重置</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>统计日期</th><th>尾程渠道</th><th>平台</th><th>国家</th><th>销售组</th><th>仓库</th><th>账号</th>
+                <th>日上限</th><th>已用单量</th><th>剩余额度</th><th>占比</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="statsTbody"></tbody>
+          </table>
+          <div class="pager"><span id="statsCount">共 0 条</span><span>1 / 1 页</span></div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7.2/7.3 新建/编辑弹窗 -->
+  <div class="modal-overlay" id="formModal">
+    <div class="modal">
+      <div class="modal-h"><span id="formModalTitle">新建渠道发货限制配置</span><span class="link" onclick="closeModal('formModal')">关闭</span></div>
+      <div class="modal-b">
+        <div id="formEditActiveHint" class="confirm-box" style="display:none">编辑已生效：全部字段均可修改。提交后生成新版本待审批行，原已生效行保持不变；审批通过后替换生效，当日已用按新限制场景延续。</div>
+        <div class="form-row">
+          <label>尾程渠道 <span class="req">*</span></label>
+          <select id="fChannel"><option value="">请选择尾程渠道</option><option value="新渠道-经济线">新渠道-经济线</option><option value="英国卡派专线">英国卡派专线</option></select>
+        </div>
+        <p style="font-size:13px;color:#666;margin:12px 0 8px">修饰维度（选填，空=不限；多选并集共用配额，列表逗号拼接）</p>
+        <div class="grid-2">
+          <div class="form-row">
+            <label>平台</label>
+            <select id="fPlatform" multiple>
+              <option value="亚马逊">亚马逊</option><option value="eBay">eBay</option><option value="沃尔玛">沃尔玛</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>国家</label>
+            <select id="fCountry" multiple>
+              <option value="美国">美国</option><option value="英国">英国</option><option value="德国">德国</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>销售组</label>
+            <select id="fSalesGroup" multiple>
+              <option value="半精品一组">半精品一组</option><option value="半精品二组">半精品二组</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>仓库</label>
+            <select id="fWarehouse" multiple>
+              <option value="华南仓">华南仓</option><option value="英国仓">英国仓</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>账号</label>
+          <select id="fAccount" multiple>
+            <option value="店铺美国01">店铺美国01</option><option value="店铺英国01">店铺英国01</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>日上限数量 <span class="req">*</span></label>
+          <input type="number" id="fLimit" value="100" min="1" max="999999" />
+          <div class="hint">正整数 1～999999</div>
+        </div>
+        <div class="form-row"><label>备注</label><textarea id="fRemark" rows="2" placeholder="如：新渠道试运行，控制影响范围"></textarea></div>
+      </div>
+      <div class="modal-f">
+        <button class="btn btn-outline" onclick="closeModal('formModal')">取消</button>
+        <!-- 7.4 提交审批 -->
+        <button class="btn btn-primary" id="btnSaveSubmit">提交审批</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查看配置 -->
+  <div class="modal-overlay" id="viewModal">
+    <div class="modal">
+      <div class="modal-h"><span id="viewModalTitle">查看配置</span><span class="link" onclick="closeModal('viewModal')">关闭</span></div>
+      <div class="modal-b"><div class="detail-grid" id="viewDetail"></div></div>
+      <div class="modal-f"><button class="btn btn-outline" onclick="closeModal('viewModal')">关闭</button></div>
+    </div>
+  </div>
+
+  <!-- 7.6 申请停用 -->
+  <div class="modal-overlay" id="stopModal">
+    <div class="modal">
+      <div class="modal-h"><span id="stopModalTitle">申请停用</span><span class="link" onclick="closeModal('stopModal')">关闭</span></div>
+      <div class="modal-b">
+        <div class="confirm-box">确认提交停用审批？通过后将不再参与限量校验。审批通过前配置仍为已生效并参与匹配。</div>
+        <div class="form-row"><label>停用原因</label><textarea id="stopReason" rows="3" placeholder="选填，最多 200 字"></textarea></div>
+      </div>
+      <div class="modal-f">
+        <button class="btn btn-outline" onclick="closeModal('stopModal')">取消</button>
+        <button class="btn btn-primary" id="btnStopSubmit">提交停用审批</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7.8 审批弹窗 -->
+  <div class="modal-overlay" id="approveModal">
+    <div class="modal modal-lg">
+      <div class="modal-h"><span id="approveModalTitle">审批</span><span class="link" onclick="closeModal('approveModal')">关闭</span></div>
+      <div class="modal-b">
+        <div class="detail-grid" id="approveMeta"></div>
+        <div id="approveContent"></div>
+        <div class="form-row" style="margin-top:16px">
+          <label>审批意见</label>
+          <textarea id="approveComment" rows="2" placeholder="选填，最多 200 字"></textarea>
+        </div>
+      </div>
+      <div class="modal-f">
+        <button class="btn btn-outline" onclick="closeModal('approveModal')">取消</button>
+        <button class="btn btn-danger" id="btnReject">驳回</button>
+        <button class="btn btn-success" id="btnPass">通过</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 审批查看 -->
+  <div class="modal-overlay" id="approveViewModal">
+    <div class="modal modal-lg">
+      <div class="modal-h"><span id="approveViewTitle">查看审批</span><span class="link" onclick="closeModal('approveViewModal')">关闭</span></div>
+      <div class="modal-b"><div id="approveViewContent"></div></div>
+      <div class="modal-f"><button class="btn btn-outline" onclick="closeModal('approveViewModal')">关闭</button></div>
+    </div>
+  </div>
+
+  <!-- 7.10 订单明细 -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal modal-lg">
+      <div class="modal-h"><span id="detailModalTitle">订单明细</span><span class="link" onclick="closeModal('detailModal')">关闭</span></div>
+      <div class="modal-b">
+        <div class="filter-bar" style="margin-bottom:12px">
+          <input type="text" id="orderSearch" placeholder="订单编号" style="width:160px" />
+          <button class="btn btn-primary btn-sm" id="btnOrderSearch">查询</button>
+          <button class="btn btn-outline btn-sm">导出</button>
+        </div>
+        <p style="font-size:12px;color:#666;margin-bottom:8px">仅展示当前仍占用额度的订单（不含已释放流水）</p>
+        <table>
+          <thead>
+            <tr><th>订单编号</th><th>尾程渠道</th><th>平台</th><th>国家</th><th>销售组</th><th>仓库</th><th>账号</th></tr>
+          </thead>
+          <tbody id="orderTbody"></tbody>
+        </table>
+      </div>
+      <div class="modal-f"><button class="btn btn-outline" onclick="closeModal('detailModal')">关闭</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STATUS_LABEL = { pending: '待审批', active: '已生效', reject: '已驳回', stopped: '已停用' };
+    const STATUS_CLASS = { pending: 's-pending', active: 's-active', reject: 's-reject', stopped: 's-stop' };
+    const APPROVE_STATUS = { pending: '待审批', passed: '已通过', rejected: '已驳回', withdrawn: '已撤回' };
+
+    let nextConfigNum = 7;
+    let nextApproveNum = 5;
+    let selectedApproveId = null;
+    let selectedConfigIds = [];
+    let formMode = 'new';
+    let editingConfigId = null;
+    let detailSceneKey = null;
+
+    const store = {
+      configs: [
+        { id: 'c1', code: 'LSL-001', channel: '新渠道-经济线', platform: '不限', country: '不限', salesGroup: '不限', warehouse: '不限', account: '不限', limit: 100, status: 'active', updater: '李四', updatedAt: '2026-06-12 10:20', remark: '新渠道试运行', submitter: '李四', versionNote: '' },
+        { id: 'c2', code: 'LSL-002', channel: '新渠道-经济线', platform: '亚马逊,eBay', country: '美国', salesGroup: '半精品一组', warehouse: '不限', account: '不限', limit: 50, status: 'active', updater: '张三', updatedAt: '2026-06-11 15:30', remark: '', submitter: '张三', versionNote: '' },
+        { id: 'c3', code: 'LSL-003', channel: '英国卡派专线', platform: '不限', country: '英国', salesGroup: '不限', warehouse: '英国仓', account: '店铺英国01', limit: 30, status: 'pending', updater: '张三', updatedAt: '2026-06-12 09:20', remark: '', submitter: '张三', versionNote: '' },
+        { id: 'c4', code: 'LSL-004', channel: '新渠道-经济线', platform: '不限', country: '不限', salesGroup: '不限', warehouse: '不限', account: '不限', limit: 120, status: 'reject', updater: '王五', updatedAt: '2026-06-12 08:10', remark: '主管要求调整场景', submitter: '王五', versionNote: '' },
+        { id: 'c5', code: 'LSL-005', channel: '新渠道-经济线', platform: '不限', country: '不限', salesGroup: '不限', warehouse: '不限', account: '不限', limit: 80, status: 'stopped', updater: '李四', updatedAt: '2026-05-25 14:00', remark: '试运行结束', submitter: '李四', versionNote: '已被 LSL-001 替换生效' },
+        { id: 'c6', code: 'LSL-006', channel: '新渠道-经济线', platform: '不限', country: '不限', salesGroup: '不限', warehouse: '不限', account: '不限', limit: 120, status: 'pending', updater: '李四', updatedAt: '2026-06-11 16:45', remark: '加量试运行', submitter: '李四', versionNote: '' }
+      ],
+      approvals: [
+        { id: 'a4', code: 'SP-20260613-01', type: '停用', configId: 'c2', configCode: 'LSL-002', channel: '新渠道-经济线', submitter: '张三', submitTime: '2026-06-13 11:00', status: 'pending', approver: '', approveTime: '', comment: '', stopReason: '美国线试运行结束，恢复走原渠道' },
+        { id: 'a1', code: 'SP-20260612-03', type: '新增', configId: 'c3', configCode: 'LSL-003', channel: '英国卡派专线', submitter: '张三', submitTime: '2026-06-12 09:20', status: 'pending', approver: '', approveTime: '', comment: '' },
+        { id: 'a2', code: 'SP-20260611-08', type: '修改', configId: 'c6', configCode: 'LSL-006', channel: '新渠道-经济线', submitter: '李四', submitTime: '2026-06-11 16:45', status: 'pending', approver: '', approveTime: '', comment: '', before: { code: 'LSL-001', channel: '新渠道-经济线', platform: '不限', country: '不限', salesGroup: '不限', warehouse: '不限', account: '不限', limit: 100, remark: '新渠道试运行' }, after: { code: 'LSL-006', channel: '新渠道-经济线', platform: '不限', country: '不限', salesGroup: '不限', warehouse: '不限', account: '不限', limit: 120, remark: '加量试运行' } },
+        { id: 'a3', code: 'SP-20260610-02', type: '停用', configId: 'c5', configCode: 'LSL-005', channel: '新渠道-经济线', submitter: '李四', submitTime: '2026-06-10 11:00', status: 'passed', approver: '赵主管', approveTime: '2026-06-10 14:30', comment: '同意停用', stopReason: '试运行结束' }
+      ],
+      stats: [
+        { date: '2026-06-12', channel: '新渠道-经济线', platform: '不限', country: '不限', salesGroup: '不限', warehouse: '不限', account: '不限', limit: 100, used: 87 },
+        { date: '2026-06-12', channel: '新渠道-经济线', platform: '亚马逊,eBay', country: '美国', salesGroup: '半精品一组', warehouse: '不限', account: '不限', limit: 50, used: 42 },
+        { date: '2026-06-11', channel: '新渠道-经济线', platform: '不限', country: '不限', salesGroup: '不限', warehouse: '不限', account: '不限', limit: 100, used: 100 }
+      ],
+      orders: {
+        '新渠道-经济线|不限|不限|不限|不限|不限': [
+          { orderNo: 'ORD-20260612-001', channel: '新渠道-经济线', platform: '亚马逊', country: '美国', salesGroup: '半精品一组', warehouse: '华南仓', account: '店铺美国01' },
+          { orderNo: 'ORD-20260612-045', channel: '新渠道-经济线', platform: '亚马逊', country: '德国', salesGroup: '半精品一组', warehouse: '华南仓', account: '店铺德国01' },
+          { orderNo: 'ORD-20260612-088', channel: '新渠道-经济线', platform: 'eBay', country: '英国', salesGroup: '半精品一组', warehouse: '英国仓', account: '店铺英国01' }
+        ],
+        '新渠道-经济线|亚马逊,eBay|美国|半精品一组|不限|不限': [
+          { orderNo: 'ORD-20260612-102', channel: '新渠道-经济线', platform: '亚马逊', country: '美国', salesGroup: '半精品一组', warehouse: '华南仓', account: '店铺美国02' }
+        ]
+      }
+    };
+
+    const pages = {
+      config: { title: '渠道发货限制配置', path: '物流 → 渠道管理 → 渠道发货限制配置 → 配置' },
+      approve: { title: '渠道发货限制配置', path: '物流 → 渠道管理 → 渠道发货限制配置 → 审批' },
+      monitor: { title: '渠道发货限制配置', path: '物流 → 渠道管理 → 渠道发货限制配置 → 占用统计' }
+    };
+
+    function nowStr() {
+      const d = new Date();
+      return `2026-06-15 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2400);
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('show'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    function sceneKey(o) {
+      return [o.channel, o.platform, o.country, o.salesGroup, o.warehouse, o.account].join('|');
+    }
+
+    function hasPendingStop(configId) {
+      return store.approvals.some(a => a.type === '停用' && a.configId === configId && a.status === 'pending');
+    }
+
+    function getApprovalDims(a) {
+      const cfg = store.configs.find(c => c.id === a.configId);
+      if (!cfg) return { platform: '—', country: '—', salesGroup: '—', warehouse: '—', account: '—' };
+      return { platform: cfg.platform, country: cfg.country, salesGroup: cfg.salesGroup, warehouse: cfg.warehouse, account: cfg.account };
+    }
+
+    function statusTag(s) {
+      return `<span class="status ${STATUS_CLASS[s]}">${STATUS_LABEL[s]}</span>`;
+    }
+
+    function renderConfigs() {
+      const tbody = document.getElementById('configTbody');
+      const sorted = [...store.configs].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      tbody.innerHTML = sorted.map(c => {
+        const viewLink = ['active', 'stopped'].includes(c.status) ? `<span class="link" data-view="${c.id}">查看</span>` : '—';
+        return `<tr data-id="${c.id}" data-status="${c.status}">
+          <td class="col-check"><input type="checkbox" class="row-check" /></td>
+          <td>${c.code}</td><td>${c.channel}</td>
+          <td>${c.platform}</td><td>${c.country}</td><td>${c.salesGroup}</td><td>${c.warehouse}</td><td>${c.account}</td>
+          <td>${c.limit}</td><td>${statusTag(c.status)}</td><td>${c.updater}</td><td>${c.updatedAt}</td>
+          <td>${viewLink}</td></tr>`;
+      }).join('');
+      document.getElementById('configCount').textContent = `共 ${sorted.length} 条`;
+    }
+
+    function renderApprovals() {
+      const tbody = document.getElementById('approveTbody');
+      const sorted = [...store.approvals].sort((a, b) => b.submitTime.localeCompare(a.submitTime));
+      tbody.innerHTML = sorted.map(a => {
+        const dims = getApprovalDims(a);
+        const stClass = a.status === 'pending' ? 's-pending' : a.status === 'passed' ? 's-pass' : a.status === 'rejected' ? 's-reject' : 's-stop';
+        const viewLink = a.status !== 'pending' ? `<span class="link" data-aview="${a.id}">查看</span>` : '—';
+        return `<tr data-id="${a.id}" data-status="${a.status}">
+          <td class="col-check"><input type="checkbox" class="row-check" /></td>
+          <td>${a.code}</td><td>${a.type}</td><td>${a.configCode}</td><td>${a.channel}</td>
+          <td>${dims.platform}</td><td>${dims.country}</td><td>${dims.salesGroup}</td><td>${dims.warehouse}</td><td>${dims.account}</td>
+          <td>${a.submitter}</td><td>${a.submitTime}</td>
+          <td><span class="status ${stClass}">${APPROVE_STATUS[a.status]}</span></td>
+          <td>${a.approver || '—'}</td><td>${a.approveTime || '—'}</td><td>${viewLink}</td></tr>`;
+      }).join('');
+      document.getElementById('approveCount').textContent = `共 ${sorted.length} 条`;
+    }
+
+    function renderStats() {
+      const tbody = document.getElementById('statsTbody');
+      const sorted = [...store.stats].sort((a, b) => b.date.localeCompare(a.date) || (b.used / b.limit) - (a.used / a.limit));
+      tbody.innerHTML = sorted.map(s => {
+        const remain = Math.max(0, s.limit - s.used);
+        const pct = (s.used / s.limit * 100).toFixed(1);
+        const pctClass = pct >= 100 ? 'pct-high' : parseFloat(pct) >= 80 ? 'pct-mid' : '';
+        const sk = sceneKey(s);
+        return `<tr>
+          <td>${s.date}</td><td>${s.channel}</td>
+          <td>${s.platform}</td><td>${s.country}</td><td>${s.salesGroup}</td><td>${s.warehouse}</td><td>${s.account}</td>
+          <td>${s.limit}</td><td>${s.used}</td><td>${remain}</td><td class="${pctClass}">${pct}%</td>
+          <td><span class="link" data-detail="${sk}">订单明细</span></td></tr>`;
+      }).join('');
+      document.getElementById('statsCount').textContent = `共 ${sorted.length} 条`;
+      tbody.querySelectorAll('[data-detail]').forEach(el => {
+        el.onclick = () => openOrderDetail(el.dataset.detail);
+      });
+    }
+
+    function initConfigTableEvents() {
+      const tbody = document.getElementById('configTbody');
+      tbody.addEventListener('change', (e) => {
+        if (!e.target.classList.contains('row-check')) return;
+        const tr = e.target.closest('tr');
+        tr.classList.toggle('row-selected', e.target.checked);
+        const n = tbody.querySelectorAll('.row-check:checked').length;
+        document.getElementById('configActionHint').textContent = n
+          ? `已勾选 ${n} 条 · 编辑须单选，撤回/停用可多选`
+          : '公共按钮始终可点 · 编辑单选 / 撤回·停用可多选 · 点击后稽核';
+      });
+      tbody.addEventListener('click', (e) => {
+        const view = e.target.closest('[data-view]');
+        if (view) openViewConfig(view.dataset.view);
+      });
+    }
+
+    function initApproveTableEvents() {
+      const tbody = document.getElementById('approveTbody');
+      tbody.addEventListener('change', (e) => {
+        if (!e.target.classList.contains('row-check')) return;
+        const tr = e.target.closest('tr');
+        tr.classList.toggle('row-selected', e.target.checked);
+        const n = tbody.querySelectorAll('.row-check:checked').length;
+        document.getElementById('approveActionHint').textContent = n
+          ? `已勾选 ${n} 条 · 审批须单选 1 条待审批`
+          : '公共按钮始终可点 · 审批须单选 1 条待审批 · 撤回见配置页签';
+      });
+      tbody.addEventListener('click', (e) => {
+        const view = e.target.closest('[data-aview]');
+        if (view) openApproveView(view.dataset.aview);
+      });
+    }
+
+    function getCheckedConfigRows() {
+      const tbody = document.getElementById('configTbody');
+      const checked = [...tbody.querySelectorAll('.row-check:checked')];
+      if (checked.length === 0) return { error: '请勾选一条数据进行操作！', rows: [] };
+      const rows = checked.map(chk => {
+        const tr = chk.closest('tr');
+        return { tr, cfg: store.configs.find(c => c.id === tr.dataset.id) };
+      });
+      return { rows };
+    }
+
+    function getCheckedApprovals() {
+      const tbody = document.getElementById('approveTbody');
+      const checked = [...tbody.querySelectorAll('.row-check:checked')];
+      if (checked.length === 0) return { error: '请勾选一条数据进行操作！', rows: [] };
+      if (checked.length > 1) return { error: '请仅勾选一条数据进行操作！', rows: [] };
+      const tr = checked[0].closest('tr');
+      const approval = store.approvals.find(a => a.id === tr.dataset.id);
+      return { rows: [{ tr, approval }] };
+    }
+
+    function getMultiValues(id) {
+      const sel = document.getElementById(id);
+      const vals = [...sel.selectedOptions].map(o => o.value);
+      return vals.length ? vals.join(',') : '不限';
+    }
+
+    function setMultiValues(id, str) {
+      const sel = document.getElementById(id);
+      [...sel.options].forEach(o => { o.selected = false; });
+      if (!str || str === '不限') return;
+      const set = new Set(str.split(','));
+      [...sel.options].forEach(o => { if (set.has(o.value)) o.selected = true; });
+    }
+
+    function getFormData() {
+      return {
+        channel: document.getElementById('fChannel').value,
+        platform: getMultiValues('fPlatform'),
+        country: getMultiValues('fCountry'),
+        salesGroup: getMultiValues('fSalesGroup'),
+        warehouse: getMultiValues('fWarehouse'),
+        account: getMultiValues('fAccount'),
+        limit: parseInt(document.getElementById('fLimit').value, 10),
+        remark: document.getElementById('fRemark').value
+      };
+    }
+
+    function fillForm(c) {
+      document.getElementById('fChannel').value = c?.channel || '';
+      setMultiValues('fPlatform', c?.platform);
+      setMultiValues('fCountry', c?.country);
+      setMultiValues('fSalesGroup', c?.salesGroup);
+      setMultiValues('fWarehouse', c?.warehouse);
+      setMultiValues('fAccount', c?.account);
+      document.getElementById('fLimit').value = c?.limit || 100;
+      document.getElementById('fRemark').value = c?.remark || '';
+    }
+
+    function openFormModal(mode, configId) {
+      formMode = mode;
+      editingConfigId = configId || null;
+      const isEditActive = mode === 'editActive';
+      const c = configId ? store.configs.find(x => x.id === configId) : null;
+      document.getElementById('formModalTitle').textContent = mode === 'new' ? '新建渠道发货限制配置' : `编辑配置 · ${c?.code || ''}`;
+      document.getElementById('formEditActiveHint').style.display = isEditActive ? 'block' : 'none';
+      fillForm(c);
+      openModal('formModal');
+    }
+
+    function openViewConfig(id) {
+      const c = store.configs.find(x => x.id === id);
+      if (!c) return;
+      document.getElementById('viewModalTitle').textContent = `查看配置 · ${c.code}`;
+      document.getElementById('viewDetail').innerHTML = `
+        <span class="lbl">配置编号</span><span>${c.code}</span>
+        <span class="lbl">配置状态</span><span>${statusTag(c.status)}</span>
+        <span class="lbl">尾程渠道</span><span>${c.channel}</span>
+        <span class="lbl">平台</span><span>${c.platform}</span>
+        <span class="lbl">国家</span><span>${c.country}</span>
+        <span class="lbl">销售组</span><span>${c.salesGroup}</span>
+        <span class="lbl">仓库</span><span>${c.warehouse}</span>
+        <span class="lbl">账号</span><span>${c.account}</span>
+        <span class="lbl">日上限数量</span><span>${c.limit}</span>
+        <span class="lbl">更新时间</span><span>${c.updatedAt}</span>
+        <span class="lbl">版本说明</span><span>${c.versionNote || '—'}</span>
+        <span class="lbl">备注</span><span>${c.remark || '—'}</span>`;
+      openModal('viewModal');
+    }
+
+    function isDuplicateScene(data, excludeId) {
+      const sk = sceneKey(data);
+      return store.configs.some(c => c.id !== excludeId && ['active', 'pending'].includes(c.status) && sceneKey(c) === sk);
+    }
+
+    function saveConfig() {
+      const data = getFormData();
+      if (!data.channel) { toast('请选择尾程渠道'); return; }
+      if (!data.limit || data.limit < 1 || data.limit > 999999) { toast('日上限须为 1～999999 的正整数'); return; }
+      const ts = nowStr();
+
+      if (formMode === 'new') {
+        if (isDuplicateScene(data)) { toast('相同场景与渠道的限制配置已存在，请勿重复提交'); return; }
+        const code = `LSL-${String(nextConfigNum++).padStart(3, '0')}`;
+        const newCfg = { id: 'c' + Date.now(), code, ...data, status: 'pending', updater: '洛瑶', updatedAt: ts, submitter: '洛瑶', versionNote: '' };
+        store.configs.push(newCfg);
+        addApproval('新增', newCfg);
+        toast('已提交审批，请等待主管处理');
+      } else if (formMode === 'editActive') {
+        const orig = store.configs.find(x => x.id === editingConfigId);
+        const pendingSame = store.configs.some(x => sceneKey(x) === sceneKey(orig) && x.status === 'pending' && x.id !== orig.id);
+        if (pendingSame) { toast('该场景已有待审批的修改，请等待审批完成'); return; }
+        if (isDuplicateScene(data, orig.id)) { toast('相同场景与渠道的限制配置已存在，请勿重复提交'); return; }
+        const code = `LSL-${String(nextConfigNum++).padStart(3, '0')}`;
+        const newCfg = { id: 'c' + Date.now(), code, ...data, status: 'pending', updater: '洛瑶', updatedAt: ts, remark: data.remark, submitter: '洛瑶', versionNote: '' };
+        store.configs.push(newCfg);
+        addApproval('修改', newCfg, orig, { ...data, code });
+        toast('已提交审批，原已生效行保持不变');
+      } else {
+        const c = store.configs.find(x => x.id === editingConfigId);
+        if (isDuplicateScene(data, c.id)) { toast('相同场景与渠道的限制配置已存在，请勿重复提交'); return; }
+        Object.assign(c, data, { status: 'pending', updater: '洛瑶', updatedAt: ts });
+        addApproval('修改', c);
+        toast('已提交审批，请等待主管处理');
+      }
+      closeModal('formModal');
+      renderConfigs();
+      renderApprovals();
+    }
+
+    function addApproval(type, cfg, before, afterOverride) {
+      const code = `SP-20260615-${String(nextApproveNum++).padStart(2, '0')}`;
+      const after = afterOverride || { ...cfg };
+      store.approvals.unshift({
+        id: 'a' + Date.now(), code, type, configId: cfg.id, configCode: cfg.code, channel: cfg.channel,
+        submitter: '洛瑶', submitTime: nowStr(), status: 'pending', approver: '', approveTime: '', comment: '',
+        before: type === '修改' ? before : null, after: type === '修改' ? after : null,
+        stopReason: type === '停用' ? '' : undefined
+      });
+    }
+
+    function buildConfigDetailTable(cfg, title, highlightNew) {
+      const fields = [
+        ['尾程渠道', 'channel'], ['日上限数量', 'limit'], ['平台', 'platform'], ['国家', 'country'],
+        ['销售组', 'salesGroup'], ['仓库', 'warehouse'], ['账号', 'account'], ['备注', 'remark']
+      ];
+      const rowClass = highlightNew ? 'diff-add' : '';
+      const rows = fields.map(([label, key]) =>
+        `<tr class="${rowClass}"><td>${label}</td><td>${cfg?.[key] ?? '—'}</td></tr>`
+      ).join('');
+      return `<div class="section-title">${title}</div>
+        <table><thead><tr><th>字段</th><th>内容</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function buildStopApprovalContent(a) {
+      const cfg = store.configs.find(c => c.id === a.configId);
+      return `
+        <div class="section-title">停用原因</div>
+        <div class="confirm-box">${a.stopReason || '—'}</div>
+        ${buildConfigDetailTable(cfg, '当前生效配置（只读）', false)}
+        <div class="section-title">状态变更</div>
+        <table><thead><tr><th>字段</th><th>变更前</th><th>变更后</th></tr></thead><tbody>
+          <tr class="diff-chg"><td>配置状态</td><td>已生效</td><td><span class="diff-new">已停用</span></td></tr>
+        </tbody></table>
+        <p style="font-size:12px;color:#666;margin-top:8px">审批通过前配置仍为已生效，继续参与限量校验；通过后变为已停用。</p>`;
+    }
+
+    function buildDiffTable(before, after) {
+      const fields = [
+        ['尾程渠道', 'channel'], ['日上限数量', 'limit'], ['平台', 'platform'], ['国家', 'country'],
+        ['销售组', 'salesGroup'], ['仓库', 'warehouse'], ['账号', 'account'], ['备注', 'remark']
+      ];
+      let rows = fields.map(([label, key]) => {
+        const oldV = before[key] ?? '—';
+        const newV = after[key] ?? '—';
+        const changed = String(oldV) !== String(newV);
+        return `<tr class="${changed ? 'diff-chg' : ''}"><td>${label}</td><td>${oldV}</td><td>${changed ? `<span class="diff-new">${newV}</span>` : newV}</td></tr>`;
+      }).join('');
+      return `<div class="section-title">变更对比</div>
+        <table><thead><tr><th>字段</th><th>变更前（当前已生效）</th><th>变更后（新版本）</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function openApproveModal() {
+      const a = store.approvals.find(x => x.id === selectedApproveId);
+      if (!a || a.status !== 'pending') return;
+      document.getElementById('approveModalTitle').textContent = `审批 · ${a.code}`;
+      document.getElementById('approveMeta').innerHTML = `
+        <span class="lbl">审批类型</span><span>${a.type}</span>
+        <span class="lbl">配置编号</span><span>${a.configCode}</span>
+        <span class="lbl">提交人</span><span>${a.submitter}</span>
+        <span class="lbl">提交时间</span><span>${a.submitTime}</span>
+        <span class="lbl">提交说明</span><span>—</span>`;
+      let content = '';
+      if (a.type === '修改' && a.before && a.after) {
+        content = buildDiffTable(a.before, a.after);
+      } else if (a.type === '新增') {
+        const cfg = store.configs.find(c => c.id === a.configId);
+        content = buildConfigDetailTable(cfg, '配置明细（新增）', true);
+      } else if (a.type === '停用') {
+        content = buildStopApprovalContent(a);
+      }
+      document.getElementById('approveContent').innerHTML = content;
+      document.getElementById('approveComment').value = '';
+      openModal('approveModal');
+    }
+
+    function openApproveView(id) {
+      const a = store.approvals.find(x => x.id === id);
+      if (!a) return;
+      document.getElementById('approveViewTitle').textContent = `查看审批 · ${a.code}`;
+      let html = `<div class="detail-grid">
+        <span class="lbl">审批类型</span><span>${a.type}</span>
+        <span class="lbl">审批状态</span><span>${APPROVE_STATUS[a.status]}</span>
+        <span class="lbl">审批人</span><span>${a.approver || '—'}</span>
+        <span class="lbl">审批时间</span><span>${a.approveTime || '—'}</span>
+        <span class="lbl">审批意见</span><span>${a.comment || '—'}</span></div>`;
+      if (a.type === '修改' && a.before && a.after) {
+        html += buildDiffTable(a.before, a.after);
+      } else if (a.type === '新增') {
+        const cfg = store.configs.find(c => c.id === a.configId);
+        html += buildConfigDetailTable(cfg, '配置明细（新增）', true);
+      } else if (a.type === '停用') {
+        html += buildStopApprovalContent(a);
+      }
+      document.getElementById('approveViewContent').innerHTML = html;
+      openModal('approveViewModal');
+    }
+
+    function processApproval(pass) {
+      const a = store.approvals.find(x => x.id === selectedApproveId);
+      if (!a || a.status !== 'pending') return;
+      const comment = document.getElementById('approveComment').value.trim();
+      a.status = pass ? 'passed' : 'rejected';
+      a.approver = '赵主管';
+      a.approveTime = nowStr();
+      a.comment = comment;
+      const cfg = store.configs.find(c => c.id === a.configId);
+
+      if (pass) {
+        if (a.type === '新增') {
+          if (cfg) { cfg.status = 'active'; cfg.updatedAt = a.approveTime; }
+        } else if (a.type === '修改') {
+          if (cfg) { cfg.status = 'active'; cfg.updatedAt = a.approveTime; }
+          const orig = store.configs.find(c => c.code === a.before?.code && c.status === 'active');
+          if (orig) { orig.status = 'stopped'; orig.updatedAt = a.approveTime; orig.versionNote = `已被 ${cfg.code} 替换`; }
+          const st = store.stats.find(s => sceneKey(s) === sceneKey(cfg) && s.date === '2026-06-12');
+          if (st) st.limit = cfg.limit;
+        } else if (a.type === '停用' && cfg) {
+          cfg.status = 'stopped'; cfg.updatedAt = a.approveTime;
+        }
+        toast('审批通过');
+      } else {
+        if (a.type === '停用') {
+          /* 停用驳回：配置保持已生效 */
+        } else if (cfg) {
+          cfg.status = 'reject'; cfg.updatedAt = a.approveTime;
+        }
+        toast('已驳回');
+      }
+      closeModal('approveModal');
+      selectedApproveId = null;
+      document.querySelectorAll('#approveTbody .row-check:checked').forEach(c => { c.checked = false; c.closest('tr').classList.remove('row-selected'); });
+      renderConfigs();
+      renderApprovals();
+      renderStats();
+    }
+
+    function withdrawConfig(ids) {
+      ids.forEach(id => {
+        const c = store.configs.find(x => x.id === id);
+        if (!c || c.status !== 'pending') return;
+        const ap = store.approvals.find(a => a.configId === c.id && a.status === 'pending');
+        if (ap) {
+          ap.status = 'withdrawn';
+          if (ap.type === '新增' || ap.type === '修改') {
+            store.configs = store.configs.filter(x => x.id !== c.id);
+          }
+        }
+      });
+      toast('已撤回');
+      renderConfigs();
+      renderApprovals();
+    }
+
+    function submitStop() {
+      const reason = document.getElementById('stopReason').value.trim();
+      let blocked = false;
+      selectedConfigIds.forEach(id => {
+        const c = store.configs.find(x => x.id === id);
+        if (!c || hasPendingStop(c.id)) { blocked = true; return; }
+        const code = `SP-20260615-${String(nextApproveNum++).padStart(2, '0')}`;
+        store.approvals.unshift({
+          id: 'a' + Date.now() + id, code, type: '停用', configId: c.id, configCode: c.code, channel: c.channel,
+          submitter: '洛瑶', submitTime: nowStr(), status: 'pending', approver: '', approveTime: '', comment: '', stopReason: reason
+        });
+      });
+      if (blocked) { toast('所选配置停用审批中，请勿重复申请'); return; }
+      toast('停用申请已提交');
+      closeModal('stopModal');
+      renderConfigs();
+      renderApprovals();
+    }
+
+    function openOrderDetail(sk) {
+      detailSceneKey = sk;
+      const parts = sk.split('|');
+      document.getElementById('detailModalTitle').textContent = `订单明细 · ${parts[0]} · 2026-06-12`;
+      document.getElementById('orderSearch').value = '';
+      renderOrders();
+      openModal('detailModal');
+    }
+
+    function renderOrders() {
+      const kw = document.getElementById('orderSearch').value.trim().toLowerCase();
+      const list = (store.orders[detailSceneKey] || []).filter(o => !kw || o.orderNo.toLowerCase().includes(kw));
+      document.getElementById('orderTbody').innerHTML = list.length
+        ? list.map(o => `<tr><td>${o.orderNo}</td><td>${o.channel}</td><td>${o.platform}</td><td>${o.country}</td><td>${o.salesGroup}</td><td>${o.warehouse}</td><td>${o.account}</td></tr>`).join('')
+        : '<tr><td colspan="7" style="text-align:center;color:#999">暂无订单明细</td></tr>';
+    }
+
+    document.querySelectorAll('#mainTabs .tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const p = tab.dataset.page;
+        document.querySelectorAll('#mainTabs .tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('page-' + p).classList.add('active');
+        document.getElementById('pageTitle').textContent = pages[p].title;
+        document.getElementById('pagePath').textContent = pages[p].path;
+      });
+    });
+
+    document.getElementById('btnEdit').onclick = () => {
+      const sel = getCheckedConfigRows();
+      if (sel.error && sel.rows.length === 0) { toast(sel.error); return; }
+      if (sel.rows.length > 1) { toast('请仅勾选一条数据进行操作！'); return; }
+      const c = sel.rows[0].cfg;
+      if (!['reject', 'active'].includes(c.status)) {
+        toast('请勾选一条已驳回或已生效的配置进行操作！');
+        return;
+      }
+      if (hasPendingStop(c.id)) {
+        toast('该配置停用审批中，暂不可编辑');
+        return;
+      }
+      if (c.status === 'active') {
+        const pendingSame = store.configs.some(x => sceneKey(x) === sceneKey(c) && x.status === 'pending' && x.id !== c.id);
+        if (pendingSame) { toast('该场景已有待审批的修改，请等待审批完成'); return; }
+      }
+      openFormModal(c.status === 'active' ? 'editActive' : 'edit', c.id);
+    };
+
+    document.getElementById('btnSaveSubmit').onclick = () => {
+      const msg = formMode === 'editActive'
+        ? '确认提交审批？新版本审批通过后将立即替换当前生效配置，当日已用将延续累计。'
+        : '确认提交审批？审批通过后方可参与渠道限量校验。';
+      if (confirm(msg)) saveConfig();
+    };
+
+    document.getElementById('btnNew').onclick = () => openFormModal('new');
+
+    document.getElementById('btnWithdraw').onclick = () => {
+      const tbody = document.getElementById('configTbody');
+      const checked = [...tbody.querySelectorAll('.row-check:checked')];
+      if (checked.length === 0) { toast('请勾选数据进行操作！'); return; }
+      const rows = checked.map(chk => store.configs.find(c => c.id === chk.closest('tr').dataset.id));
+      if (rows.some(c => c.status !== 'pending')) {
+        toast('请勾选待审批的配置进行操作！');
+        return;
+      }
+      if (confirm('确认撤回所选审批？撤回后配置将删除（修改类仅删新版本），可重新新建或编辑。')) {
+        withdrawConfig(rows.map(c => c.id));
+      }
+    };
+
+    document.getElementById('btnStop').onclick = () => {
+      const tbody = document.getElementById('configTbody');
+      const checked = [...tbody.querySelectorAll('.row-check:checked')];
+      if (checked.length === 0) { toast('请勾选数据进行操作！'); return; }
+      const rows = checked.map(chk => store.configs.find(c => c.id === chk.closest('tr').dataset.id));
+      if (rows.some(c => c.status !== 'active')) {
+        toast('请勾选已生效的配置进行操作！');
+        return;
+      }
+      if (rows.some(c => hasPendingStop(c.id))) {
+        toast('所选配置停用审批中，请勿重复申请');
+        return;
+      }
+      selectedConfigIds = rows.map(c => c.id);
+      document.getElementById('stopModalTitle').textContent = `申请停用 · 已选 ${selectedConfigIds.length} 条`;
+      document.getElementById('stopReason').value = '';
+      openModal('stopModal');
+    };
+
+    document.getElementById('btnStopSubmit').onclick = submitStop;
+
+    document.getElementById('btnApprove').onclick = () => {
+      const sel = getCheckedApprovals();
+      if (sel.error) { toast(sel.error); return; }
+      const a = sel.rows[0].approval;
+      if (a.status !== 'pending') {
+        toast('请勾选一条待审批的审批单进行操作！');
+        return;
+      }
+      selectedApproveId = a.id;
+      openApproveModal();
+    };
+
+    document.getElementById('btnPass').onclick = () => {
+      const a = store.approvals.find(x => x.id === selectedApproveId);
+      const msg = a?.type === '停用'
+        ? '确认停用？停用后将不再参与限量校验。'
+        : '确认审批通过？通过后将按规则参与渠道限量校验。';
+      if (confirm(msg)) processApproval(true);
+    };
+
+    document.getElementById('btnReject').onclick = () => processApproval(false);
+    document.getElementById('btnOrderSearch').onclick = renderOrders;
+
+    initConfigTableEvents();
+    initApproveTableEvents();
+    renderConfigs();
+    renderApprovals();
+    renderStats();
+  </script>
+</body>
+</html>
