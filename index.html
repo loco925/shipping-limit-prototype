@@ -130,7 +130,7 @@
           <button class="btn btn-outline btn-sm">重置</button>
         </div>
         <div class="action-bar" id="configActionBar">
-          <button class="btn btn-primary" id="btnNew">+ 新建配置</button>
+          <button class="btn btn-primary" id="btnNew">+ 新增</button>
           <span class="sep"></span>
           <button class="btn btn-outline" id="btnEdit">编辑</button>
           <button class="btn btn-outline" id="btnWithdraw">撤回</button>
@@ -221,7 +221,7 @@
   <!-- 7.2/7.3 新建/编辑弹窗 -->
   <div class="modal-overlay" id="formModal">
     <div class="modal">
-      <div class="modal-h"><span id="formModalTitle">新建渠道发货限制配置</span><span class="link" onclick="closeModal('formModal')">关闭</span></div>
+      <div class="modal-h"><span id="formModalTitle">新增渠道发货限制配置</span><span class="link" onclick="closeModal('formModal')">关闭</span></div>
       <div class="modal-b">
         <div id="formEditActiveHint" class="confirm-box" style="display:none">编辑已生效：全部字段均可修改。提交后生成新版本待审批行，原已生效行保持不变；审批通过后替换生效，当日已用按新限制场景延续。</div>
         <div class="form-row">
@@ -588,7 +588,7 @@
       editingConfigId = configId || null;
       const isEditActive = mode === 'editActive';
       const c = configId ? store.configs.find(x => x.id === configId) : null;
-      document.getElementById('formModalTitle').textContent = mode === 'new' ? '新建渠道发货限制配置' : `编辑配置 · ${c?.code || ''}`;
+      document.getElementById('formModalTitle').textContent = mode === 'new' ? '新增渠道发货限制配置' : `编辑配置 · ${c?.code || ''}`;
       document.getElementById('formEditActiveHint').style.display = isEditActive ? 'block' : 'none';
       fillForm(c);
       openModal('formModal');
